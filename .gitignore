@@ -1,14 +1,9 @@
-# ---- Data (never commit full datasets) ----
-data/
+# ---- Large data (only if too big to commit) ----
+# 02_Data/raw_data/large_*.csv
 *.parquet
-*.delta
-_delta_log/
 *.zip
-# Keep only the small sample files
-!samples/
-!samples/**
 
-# ---- Jupyter / Python ----
+# ---- Python ----
 .ipynb_checkpoints/
 __pycache__/
 *.pyc
@@ -19,8 +14,12 @@ env/
 # ---- Secrets & local config ----
 .env
 *.env
-.databrickscfg
+.pgpass
 secrets/
+
+# ---- Logs & dumps ----
+*.log
+*.dump
 
 # ---- Power BI temp / cache ----
 *.pbix.bak
