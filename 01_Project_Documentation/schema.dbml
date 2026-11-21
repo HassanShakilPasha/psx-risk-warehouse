@@ -1,0 +1,167 @@
+// PSX Market Risk Data Warehouse - Physical Schema (DBML)
+// Course: DL3004 Data Warehousing & Business Intelligence
+// Team: Saqib Qazi (24L-2506), Hassan Shakil (24L-2521), Ammara Saleem (24L-2571)
+
+// ==========================================
+// CONFORMED & LOOKUP DIMENSIONS
+// ==========================================
+
+Table dim_date {
+  date_key int [pk, note: "Smart surrogate key YYYYMMDD"]
+  full_date date [not null, unique, note: "Calendar date"]
+  day_of_month int [not null]
+  day_name varchar [not null]
+  day_of_week int [not null]
+  week_of_year int [not null]
+  month int [not null]
+  month_name varchar [not null]
+  quarter int [not null]
+  year int [not null]
+  year_month varchar [not null]
+  is_weekend boolean [not null]
+  is_trading_day boolean [not null]
+
+  Note: "Conformed calendar dimension role for trading date, policy decision date, and market events."
+}
+
+Table dim_sector {
+  sector_key int [pk, increment, note: "Surrogate key"]
+  sector_code varchar [not null, unique, note: "Natural business key"]
+  sector_name varchar [not null]
+  sector_group varchar [not null]
+  legacy_codes varchar
+
+  Note: "Snowflaked dimension referenced by dim_stock and directly by fact_sector_daily."
+}
+
+Table dim_stock {
+  stock_key int [pk, increment, note: "Surrogate key per SCD2 version"]
+  symbol varchar [not null, note: "PSX ticker symbol (Natural Key)"]
+  company_name varchar [not null]
+  sector_key int [not null, ref: > dim_sector.sector_key]
+  first_trade_date date [not null]
+  last_trade_date date [not null]
+  is_active boolean [not null]
+  effective_from date [not null]
+  effective_to date
+  is_current boolean [not null]
+
+  Note: "SCD Type 2 stock dimension tracking company name and sector re-classifications."
+}
+
+Table dim_risk_tier {
+  risk_tier_key int [pk, note: "Static surrogate key 1-4"]
+  tier_name varchar [not null, unique, note: "Low, Medium, High, Not Rated"]
+  percentile_min decimal(4,2)
+  percentile_max decimal(4,2)
+  tier_description varchar [not null]
+  sort_order int [not null]
+
+  Note: "Static lookup dimension for risk tier classification based on 20-day volatility percentiles."
+}
+
+Table dim_event_type {
+  event_type_key int [pk, note: "Static surrogate key 1-4"]
+  event_type_code varchar [not null, unique]
+  event_type_name varchar [not null]
+  event_category varchar [not null]
+  detection_rule varchar [not null]
+
+  Note: "Static lookup dimension for corporate actions, price-limit moves, and liquidity events."
+}
+
+Table dim_policy_action {
+  policy_action_key int [pk, note: "Static surrogate key 1-3"]
+  action_name varchar [not null, unique, note: "Hike, Cut, Hold"]
+  action_description varchar [not null]
+
+  Note: "Static lookup dimension for SBP monetary policy decision types."
+}
+
+// ==========================================
+// FACT TABLES
+// ==========================================
+
+Table fact_daily_stock_price {
+  date_key int [ref: > dim_date.date_key]
+  stock_key int [ref: > dim_stock.stock_key]
+  risk_tier_key int [ref: > dim_risk_tier.risk_tier_key]
+  open_price decimal(12,4)
+  high_price decimal(12,4) [not null]
+  low_price decimal(12,4) [not null]
+  close_price decimal(12,4) [not null]
+  ldcp decimal(12,4) [not null, note: "Last Day Close Price (adjusted for corporate actions)"]
+  volume bigint [not null]
+  daily_log_return double [note: "ln(close_price / ldcp)"]
+  price_range_pct double [note: "(high - low) / ldcp"]
+  volatility_20d double [note: "20-day annualized rolling volatility"]
+  volatility_60d double [note: "60-day annualized rolling volatility"]
+  avg_volume_20d double [note: "20-day average trading volume"]
+  risk_percentile double [note: "Cross-sectional percentile rank (0-1)"]
+  is_traded boolean [not null]
+  is_ohlc_valid boolean
+  load_timestamp timestamp [not null]
+
+  indexes {
+    (date_key, stock_key) [pk]
+  }
+
+  Note: "Periodic snapshot fact storing daily trading activity and derived risk metrics per stock."
+}
+
+Table fact_market_daily {
+  date_key int [pk, ref: - dim_date.date_key]
+  stocks_listed int [not null]
+  stocks_traded int [not null]
+  advancers int [not null]
+  decliners int [not null]
+  total_volume bigint [not null]
+  market_return double [note: "Equal-weighted average daily log return"]
+  market_volatility_20d double [note: "Market annualized volatility over 20 days"]
+  median_stock_volatility_20d double
+  pct_stocks_high_risk double [note: "Share of stocks in High risk tier (systemic stress gauge)"]
+  load_timestamp timestamp [not null]
+
+  Note: "Periodic snapshot fact capturing aggregated daily market-wide breadth and stress metrics."
+}
+
+Table fact_sector_daily {
+  date_key int [ref: > dim_date.date_key]
+  sector_key int [ref: > dim_sector.sector_key]
+  stocks_traded int [not null]
+  sector_volume bigint [not null]
+  avg_return double
+  avg_volatility_20d double
+  pct_high_risk double
+  load_timestamp timestamp [not null]
+
+  indexes {
+    (date_key, sector_key) [pk]
+  }
+
+  Note: "Periodic snapshot fact storing daily performance aggregates per industrial sector."
+}
+
+Table fact_policy_decision {
+  date_key int [pk, ref: > dim_date.date_key]
+  policy_action_key int [not null, ref: > dim_policy_action.policy_action_key]
+  policy_rate_pct decimal(5,2) [not null]
+  previous_rate_pct decimal(5,2) [not null]
+  change_bps int [not null, note: "Change in basis points (+ hike, - cut, 0 hold)"]
+  load_timestamp timestamp [not null]
+
+  Note: "Transaction fact recording SBP monetary policy interest rate announcements."
+}
+
+Table fact_market_event {
+  date_key int [ref: > dim_date.date_key]
+  stock_key int [ref: > dim_stock.stock_key]
+  event_type_key int [ref: > dim_event_type.event_type_key]
+  load_timestamp timestamp [not null]
+
+  indexes {
+    (date_key, stock_key, event_type_key) [pk]
+  }
+
+  Note: "Factless fact tracking occurrence of market events (splits, bonuses, price-limit locks)."
+}

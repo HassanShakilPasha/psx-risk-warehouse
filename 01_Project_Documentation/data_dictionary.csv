@@ -1,0 +1,90 @@
+Table,Column,Logical name,Data type,Key,Nullable,Description,Source / derivation rule,Example,Measure additivity / role
+fact_daily_stock_price,date_key,Date Key,INT,PK/FK,No,Trading date -> dim_date,From trade date,20250428,Key
+fact_daily_stock_price,stock_key,Stock Key,INT,PK/FK,No,Stock version valid on the trading date -> dim_stock,Lookup symbol + date range,1043,Key
+fact_daily_stock_price,risk_tier_key,Risk Tier Key,INT,FK,No,Risk tier of the stock that day -> dim_risk_tier,From risk_percentile,3,Key
+fact_daily_stock_price,open_price,Open Price,"DECIMAL(12,4)",,Yes,Opening price (PKR); may be blank in source,Source field 5,362.10,Non-additive
+fact_daily_stock_price,high_price,High Price,"DECIMAL(12,4)",,No,Day high (PKR),Source field 6,368.00,Non-additive
+fact_daily_stock_price,low_price,Low Price,"DECIMAL(12,4)",,No,Day low (PKR),Source field 7,358.25,Non-additive
+fact_daily_stock_price,close_price,Close Price,"DECIMAL(12,4)",,No,Closing price (PKR),Source field 8,365.40,Non-additive
+fact_daily_stock_price,ldcp,Last Day Close Price,"DECIMAL(12,4)",,No,Previous close as published by PSX (adjusted for corporate actions),Source field 10,361.90,Non-additive
+fact_daily_stock_price,volume,Volume,BIGINT,,No,Shares traded,Source field 9,1250000,Additive
+fact_daily_stock_price,daily_log_return,Daily Log Return,DOUBLE,,Yes,ln(close_price / ldcp),Derived,0.0096,Non-additive
+fact_daily_stock_price,price_range_pct,Price Range %,DOUBLE,,Yes,(high - low) / ldcp: intraday range,Derived,0.0270,Non-additive
+fact_daily_stock_price,volatility_20d,20-Day Volatility,DOUBLE,,Yes,Std dev of last 20 daily returns x sqrt(252),Derived (rolling window),0.3120,Non-additive
+fact_daily_stock_price,volatility_60d,60-Day Volatility,DOUBLE,,Yes,Std dev of last 60 daily returns x sqrt(252),Derived (rolling window),0.2850,Non-additive
+fact_daily_stock_price,avg_volume_20d,20-Day Average Volume,DOUBLE,,Yes,Average shares traded over last 20 days (liquidity),Derived (rolling window),980000,Non-additive
+fact_daily_stock_price,risk_percentile,Risk Percentile,DOUBLE,,Yes,Rank of volatility_20d among all stocks that day (0-1),Derived,0.86,Non-additive
+fact_daily_stock_price,is_traded,Is Traded,BOOLEAN,,No,volume > 0,Derived,TRUE,Flag / audit
+fact_daily_stock_price,is_ohlc_valid,Is OHLC Valid,BOOLEAN,,Yes,low <= open/close <= high and prices > 0,Derived (data quality),TRUE,Flag / audit
+fact_daily_stock_price,load_timestamp,Load Timestamp,TIMESTAMP,,No,When the row was loaded (audit),current_timestamp(),2026-10-21 08:10:00,Flag / audit
+fact_market_daily,date_key,Date Key,INT,PK/FK,No,Trading date -> dim_date,From trade date,20250428,Key
+fact_market_daily,stocks_listed,Stocks Listed,INT,,No,Stocks in that day's market summary,COUNT,612,Semi-additive
+fact_market_daily,stocks_traded,Stocks Traded,INT,,No,Stocks with volume > 0,COUNT,455,Semi-additive
+fact_market_daily,advancers,Advancers,INT,,No,Stocks that closed higher than LDCP,COUNT,210,Semi-additive
+fact_market_daily,decliners,Decliners,INT,,No,Stocks that closed lower than LDCP,COUNT,190,Semi-additive
+fact_market_daily,total_volume,Total Volume,BIGINT,,No,Shares traded across the market,SUM(volume),385000000,Additive
+fact_market_daily,market_return,Market Return,DOUBLE,,Yes,Equal-weighted average daily log return,AVG(daily_log_return),0.0042,Non-additive
+fact_market_daily,market_volatility_20d,Market Volatility 20D,DOUBLE,,Yes,Std dev of market_return over 20 days x sqrt(252),Derived (rolling window),0.1840,Non-additive
+fact_market_daily,median_stock_volatility_20d,Median Stock Volatility 20D,DOUBLE,,Yes,Median volatility_20d across stocks,PERCENTILE,0.3300,Non-additive
+fact_market_daily,pct_stocks_high_risk,% Stocks High Risk,DOUBLE,,Yes,Share of stocks in the High tier (systemic stress),Derived,0.20,Non-additive
+fact_market_daily,load_timestamp,Load Timestamp,TIMESTAMP,,No,When the row was loaded (audit),current_timestamp(),2026-10-21 08:12:00,Flag / audit
+fact_sector_daily,date_key,Date Key,INT,PK/FK,No,Trading date -> dim_date,From trade date,20250428,Key
+fact_sector_daily,sector_key,Sector Key,INT,PK/FK,No,Sector -> dim_sector,From stock sector,12,Key
+fact_sector_daily,stocks_traded,Stocks Traded,INT,,No,Stocks in the sector with volume > 0,COUNT,18,Semi-additive
+fact_sector_daily,sector_volume,Sector Volume,BIGINT,,No,Shares traded in the sector,SUM(volume),42000000,Additive
+fact_sector_daily,avg_return,Average Return,DOUBLE,,Yes,Equal-weighted average return of sector stocks,AVG,0.0031,Non-additive
+fact_sector_daily,avg_volatility_20d,Average Volatility 20D,DOUBLE,,Yes,Average volatility_20d of sector stocks,AVG,0.2950,Non-additive
+fact_sector_daily,pct_high_risk,% High Risk,DOUBLE,,Yes,Share of sector stocks in the High tier,Derived,0.25,Non-additive
+fact_sector_daily,load_timestamp,Load Timestamp,TIMESTAMP,,No,When the row was loaded (audit),current_timestamp(),2026-10-21 08:12:00,Flag / audit
+fact_policy_decision,date_key,Date Key,INT,PK/FK,No,Effective date -> dim_date,SBP announcement,20230627,Key
+fact_policy_decision,policy_action_key,Policy Action Key,INT,FK,No,Hike / Cut / Hold -> dim_policy_action,Derived from change_bps,1,Key
+fact_policy_decision,policy_rate_pct,Policy Rate %,"DECIMAL(5,2)",,No,Policy rate after the decision,SBP Structure of Interest Rates,22.00,Non-additive
+fact_policy_decision,previous_rate_pct,Previous Rate %,"DECIMAL(5,2)",,No,Policy rate before the decision,Derived,21.00,Non-additive
+fact_policy_decision,change_bps,Change (bps),INT,,No,"Change in basis points (+ hike, - cut)",Derived,100,Additive
+fact_policy_decision,load_timestamp,Load Timestamp,TIMESTAMP,,No,When the row was loaded (audit),current_timestamp(),2026-10-21 08:12:00,Flag / audit
+fact_market_event,date_key,Date Key,INT,PK/FK,No,Event date -> dim_date,From trade date,20250428,Key
+fact_market_event,stock_key,Stock Key,INT,PK/FK,No,Stock -> dim_stock,Lookup,1043,Key
+fact_market_event,event_type_key,Event Type Key,INT,PK/FK,No,Type of event -> dim_event_type,Detection rules,1,Key
+fact_market_event,load_timestamp,Load Timestamp,TIMESTAMP,,No,When the row was loaded (audit),current_timestamp(),2026-10-21 08:12:00,Flag / audit
+dim_date,date_key,Date Key,INT,PK,No,Surrogate (smart) key in YYYYMMDD form,Generated: yyyyMMdd of full_date,20250428,Key
+dim_date,full_date,Full Date,DATE,NK,No,Calendar date (natural key),Generated date sequence,2025-04-28,Attribute
+dim_date,day_of_month,Day of Month,INT,,No,Day number 1-31,day(full_date),28,Attribute
+dim_date,day_name,Day Name,STRING,,No,Weekday name,"date_format(full_date,'EEEE')",Monday,Attribute
+dim_date,day_of_week,Day of Week,INT,,No,1 = Monday ... 7 = Sunday,Derived,1,Attribute
+dim_date,week_of_year,Week of Year,INT,,No,ISO week number,weekofyear(full_date),18,Attribute
+dim_date,month,Month,INT,,No,Month number 1-12,month(full_date),4,Attribute
+dim_date,month_name,Month Name,STRING,,No,Month name,"date_format(full_date,'MMMM')",April,Attribute
+dim_date,quarter,Quarter,INT,,No,Calendar quarter 1-4,quarter(full_date),2,Attribute
+dim_date,year,Year,INT,,No,Calendar year,year(full_date),2025,Attribute
+dim_date,year_month,Year-Month,STRING,,No,Sortable month label,"date_format(full_date,'yyyy-MM')",2025-04,Attribute
+dim_date,is_weekend,Is Weekend,BOOLEAN,,No,TRUE on Saturday/Sunday,day_of_week >= 6,FALSE,Attribute
+dim_date,is_trading_day,Is Trading Day,BOOLEAN,,No,TRUE if PSX published a market summary that day,Date exists in cleansed price data,TRUE,Attribute
+dim_sector,sector_key,Sector Key,INT,PK,No,Surrogate key,Generated sequence,7,Key
+dim_sector,sector_code,Sector Code,STRING,NK,No,PSX sector code from the market summary file,Source field 3,0807,Attribute
+dim_sector,sector_name,Sector Name,STRING,,No,Readable sector name,Reference mapping file (PSX sector list),Commercial Banks,Attribute
+dim_sector,sector_group,Sector Group,STRING,,No,Broad grouping for roll-up,Reference mapping file,Financials,Attribute
+dim_sector,legacy_codes,Legacy Codes,STRING,,Yes,Older codes mapped to this sector (codes changed over time),Reference mapping file,8980,Attribute
+dim_stock,stock_key,Stock Key,INT,PK,No,Surrogate key (one per version),Generated sequence,1043,Key
+dim_stock,symbol,Symbol,STRING,NK,No,PSX ticker (natural key),"Source field 2, trimmed",LUCK,Attribute
+dim_stock,company_name,Company Name,STRING,,No,Company name as published by PSX,Source field 4,Lucky Cement,Attribute
+dim_stock,sector_key,Sector Key,INT,FK,No,Sector of the stock in this version,Lookup on dim_sector.sector_code,12,Key
+dim_stock,first_trade_date,First Trade Date,DATE,,No,First date the symbol appears,MIN(trade date),2015-01-01,Attribute
+dim_stock,last_trade_date,Last Trade Date,DATE,,No,Latest date the symbol appears,MAX(trade date),2026-10-02,Attribute
+dim_stock,is_active,Is Active,BOOLEAN,,No,Appeared in the last 30 days (FALSE = delisted/suspended),last_trade_date >= max date - 30,TRUE,Attribute
+dim_stock,effective_from,Effective From,DATE,,No,Start of this version,SCD2,2015-01-01,Attribute
+dim_stock,effective_to,Effective To,DATE,,Yes,End of this version (NULL = current),SCD2,NULL,Attribute
+dim_stock,is_current,Is Current,BOOLEAN,,No,TRUE for the current version,SCD2,TRUE,Attribute
+dim_risk_tier,risk_tier_key,Risk Tier Key,INT,PK,No,Surrogate key,Static,3,Key
+dim_risk_tier,tier_name,Tier Name,STRING,NK,No,Low / Medium / High / Not Rated,Static,High,Attribute
+dim_risk_tier,percentile_min,Percentile Min,"DECIMAL(4,2)",,Yes,Lower bound of daily volatility percentile,Business rule,0.80,Attribute
+dim_risk_tier,percentile_max,Percentile Max,"DECIMAL(4,2)",,Yes,Upper bound of daily volatility percentile,Business rule,1.00,Attribute
+dim_risk_tier,tier_description,Description,STRING,,No,Meaning of the tier,Static,Top 20% most volatile stocks that day,Attribute
+dim_risk_tier,sort_order,Sort Order,INT,,No,Display order in reports,Static,3,Attribute
+dim_event_type,event_type_key,Event Type Key,INT,PK,No,Surrogate key,Static,1,Key
+dim_event_type,event_type_code,Event Type Code,STRING,NK,No,Short code,Static,PRICE_ADJ,Attribute
+dim_event_type,event_type_name,Event Type Name,STRING,,No,Readable name,Static,Corporate action price adjustment,Attribute
+dim_event_type,event_category,Event Category,STRING,,No,Corporate Action / Price Limit / Liquidity,Static,Corporate Action,Attribute
+dim_event_type,detection_rule,Detection Rule,STRING,,No,How the event is detected from the data,Static,LDCP differs from previous close by > 1%,Attribute
+dim_policy_action,policy_action_key,Policy Action Key,INT,PK,No,Surrogate key,Static,1,Key
+dim_policy_action,action_name,Action Name,STRING,NK,No,Hike / Cut / Hold,Static,Hike,Attribute
+dim_policy_action,action_description,Description,STRING,,No,Meaning of the action,Static,Policy rate increased,Attribute
