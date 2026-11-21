@@ -1,5 +1,6 @@
 # ---- Large data (only if too big to commit) ----
-# 02_Data/raw_data/large_*.csv
+02_Data/raw_data/psx_market_summary.csv
+DWBI_Phase2 final/
 *.parquet
 *.zip
 

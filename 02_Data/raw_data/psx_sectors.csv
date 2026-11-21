@@ -1,0 +1,39 @@
+sector_code,sector_name,security_type
+0801,Automobile Assembler,Equity
+0802,Automobile Parts & Accessories,Equity
+0803,Cable & Electrical Goods,Equity
+0804,Cement,Equity
+0805,Chemical,Equity
+0806,Close-End Mutual Fund,Closed-End Fund
+0807,Commercial Banks,Equity
+0808,Engineering,Equity
+0809,Fertilizer,Equity
+0810,Food & Personal Care Products,Equity
+0811,Glass & Ceramics,Equity
+0812,Insurance,Equity
+0813,Inv. Banks / Inv. Cos. / Securities Cos.,Equity
+0814,Jute,Equity
+0815,Leasing Companies,Equity
+0816,Leather & Tanneries,Equity
+0818,Miscellaneous,Equity
+0819,Modarabas,Equity
+0820,Oil & Gas Exploration Companies,Equity
+0821,Oil & Gas Marketing Companies,Equity
+0822,"Paper, Board & Packaging",Equity
+0823,Pharmaceuticals,Equity
+0824,Power Generation & Distribution,Equity
+0825,Refinery,Equity
+0826,Sugar & Allied Industries,Equity
+0827,Synthetic & Rayon,Equity
+0828,Technology & Communication,Equity
+0829,Textile Composite,Equity
+0830,Textile Spinning,Equity
+0831,Textile Weaving,Equity
+0832,Tobacco,Equity
+0833,Transport,Equity
+0834,Vanaspati & Allied Industries,Equity
+0835,Woollen,Equity
+0836,Real Estate Investment Trust,REIT
+0837,Exchange Traded Funds,ETF
+0838,Property,Equity
+0839,Apparel,Equity
