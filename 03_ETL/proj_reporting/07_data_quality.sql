@@ -1,5 +1,5 @@
 -- Data quality validation. Every check returns one row: what was checked, the result, and PASS/FAIL.
--- Run after 06_facts.sql. Screenshot the output for the Data Quality Report.
+
 WITH checks AS (
  -- COMPLETENESS
  SELECT 1 AS n, 'Completeness' AS category, 'Fact rows with unknown date (-1)' AS check_name,
