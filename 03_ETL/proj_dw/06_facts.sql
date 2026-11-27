@@ -1,5 +1,6 @@
 -- Staging + dimensions -> facts. Business keys (symbol, date, sector code) are swapped for surrogate keys.
--- Full reload: run after 05_dimensions.sql.
+
+BEGIN;
 TRUNCATE project_dw.fact_daily_stock_price, project_dw.fact_market_daily, project_dw.fact_sector_daily, project_dw.fact_policy_decision, project_dw.fact_market_event;
 
 ----------------------------------------------------------------------
@@ -124,3 +125,5 @@ WITH e AS (
 SELECT e.date_key, e.stock_key, t.event_type_key
 FROM e
 JOIN project_dw.dim_event_type t ON t.event_type_code IN (e.adj, e.lim, e.no_trade);
+
+Commit ;
